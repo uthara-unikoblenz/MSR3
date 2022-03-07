@@ -48,7 +48,7 @@ def write_csv(df: dataframe, folder_path: str):
     Writes the dataframe `df` into a folder with the path `folder_path`.
     """
     df.write.format("csv").option(
-        "header", "true").save(folder_path)
+        "header", "true").mode("overwrite").save(folder_path)
 
 
 def copy_csv(input_folder: str, output_file_path: str):
