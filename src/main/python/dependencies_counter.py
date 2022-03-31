@@ -2,9 +2,6 @@ import findspark
 import numpy as np
 
 findspark.init()
-
-from pyspark.sql import Window
-import pyspark.sql.functions as F
 from pyspark import SparkContext
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import HashingTF, MinHashLSH
@@ -13,7 +10,7 @@ from pyspark.sql.types import StringType
 from functools import reduce  # For Python 3.x
 from pyspark.sql import DataFrame
 
-
+import pyspark.sql.functions as F
 import utils as u
 
 
@@ -130,9 +127,30 @@ def countPairs():
 def unionAll(dfs):
     return reduce(DataFrame.unionAll, dfs)
 
+
+def addProbabilityFields(dependenciesSelectedFromFirstApproach,final_dependencies_selected, df1_count):
+    final_dependencies_selected = unionAll([dependenciesSelectedFromFirstApproach, final_dependencies_selected])
+    final_dependencies_selected = final_dependencies_selected \
+        .withColumn("P(d1)", F.round(final_dependencies_selected["count1"] / df1_count, 2)) \
+        .withColumn("P(d2)", F.round(final_dependencies_selected["count2"] / df1_count, 2)) \
+        .withColumn("P(d1|d2)", F.round(final_dependencies_selected["count"] / final_dependencies_selected["count2"], 2)) \
+        .withColumn("P(d2|d1)", F.round(final_dependencies_selected["count"] / final_dependencies_selected["count1"], 2)) \
+        .withColumn("P(d1|!d2)", ((final_dependencies_selected["count1"] / df1_count) - ((final_dependencies_selected["count1"] / df1_count) * (final_dependencies_selected["count2"] / df1_count)))) \
+        .withColumn("P(d2|!d1)", ((final_dependencies_selected["count2"] / df1_count) - ((final_dependencies_selected["count2"] / df1_count) * (final_dependencies_selected["count1"] / df1_count))))
+    return final_dependencies_selected
+
+
+def applyDeltaP(final_dependencies_selected):
+    data_prediction1 = final_dependencies_selected.filter(((F.col("P(d1|d2)") - F.col("P(d1|!d2)")) > 0) | ((F.col("P(d2|d1)") - F.col("P(d2|!d1)")) > 0))
+    data_prediction1 = data_prediction1 \
+        .withColumn("Delta_P(d1,d2)", (data_prediction1["P(d1|d2)"] - data_prediction1["P(d1|!d2)"]) / (1 - data_prediction1["P(d1|!d2)"])) \
+        .withColumn("Delta_P(d2,d1)", (data_prediction1["P(d2|d1)"] - data_prediction1["P(d2|!d1)"]) / (1 - data_prediction1["P(d2|!d1)"]))
+    data_prediction1 = data_prediction1.orderBy(data_prediction1["Delta_P(d1,d2)"], ascending=False).limit(50)
+    return data_prediction1
+
+
 def dependencyPrediction():
     u.delete_dir(u.spark_dir)
-
     df1 = u.read_csv(spark, "../../../output/repositories_with_dependencies.csv")
     df1_count = df1.count()
 
@@ -141,57 +159,32 @@ def dependencyPrediction():
     df2 = df2.filter((F.col("count") >= 2) & (F.col("count") < 5)).orderBy(df2["count"], ascending=False)
     df2 = df2.withColumn(u.dependencies, F.split(
         F.regexp_replace(u.dependencies, "[\[\]]", ""), ","))
-
     df2 = df2.withColumn("dependency1", df2['dependencies'][0])\
         .withColumn("dependency2", df2['dependencies'][1])\
         .drop("dependencies")
-
-    # change later
     df2 = df2.filter(F.col("count") == 3)
 
+    # third approach dependency pair occurrence proportion
     df3 = u.read_csv(spark, "../../../output/dependencies_pairs_counted.csv")
-
     dependenciesSelectedFromFirstApproach = df2.join(df3.alias("b"), ((df2["dependency1"] == df3["dependency1"]) &
                                                   (df2["dependency2"] == df3["dependency2"]))) \
         .select("b.dependency1", "b.dependency2","b.count", "b.count1", "b.count2", "b.proportion1", "b.proportion2",\
                 "b.maxProportion")
 
+    # ENHANCEMENT
+    # applying the causality function before applying prop > .6
+    final_dependencies_selected = addProbabilityFields(dependenciesSelectedFromFirstApproach, df3, df1_count)
+    data_prediction1 = applyDeltaP(final_dependencies_selected)
+    u.write_csv(data_prediction1.filter((F.col("P(d1|d2)") >= 0.4) & (F.col("P(d2|d1)") >= 0.4)).coalesce(1), u.spark_dir)
+    u.copy_csv(u.spark_dir, "../../../output/data_prediction_without_proportion_filtering.csv")
+
+    # applying the causality function after applying prop > .6
     final_dependencies_selected = df3.filter((F.col("proportion1") >= 0.6) & (F.col("proportion2") >= 0.6))
-    final_dependencies_selected = unionAll([dependenciesSelectedFromFirstApproach, final_dependencies_selected])
-
-    final_dependencies_selected.show()
-
-    final_dependencies_selected = final_dependencies_selected\
-        .withColumn("P(d1)", F.round(final_dependencies_selected["count1"] / df1_count, 2)) \
-        .withColumn("P(d2)", F.round(final_dependencies_selected["count2"] / df1_count, 2)) \
-        .withColumn("P(d1|d2)", F.round(final_dependencies_selected["count"] / final_dependencies_selected["count2"], 2)) \
-        .withColumn("P(d2|d1)", F.round(final_dependencies_selected["count"] / final_dependencies_selected["count1"], 2)) \
-        .withColumn("P(d1|!d2)", ((final_dependencies_selected["count1"] / df1_count) - ((final_dependencies_selected["count1"] / df1_count) * (final_dependencies_selected["count2"] / df1_count)))) \
-        .withColumn("P(d2|!d1)", ((final_dependencies_selected["count2"] / df1_count) - ((final_dependencies_selected["count2"] / df1_count) * (final_dependencies_selected["count1"] / df1_count))))
-
-    final_dependencies_selected.show()
-
-    # testing
-    # u.write_csv(final_dependencies_selected.coalesce(1), u.spark_dir)
-    # u.copy_csv(u.spark_dir, "../../../output/data_beforefilter.csv")
-
-    data_prediction1 = final_dependencies_selected.filter((F.col("P(d1|d2)") - F.col("P(d1|!d2)")) > 0)
-    data_prediction1 = data_prediction1 \
-        .withColumn("Delta_P(d1,d2)", (final_dependencies_selected["P(d1|d2)"] - final_dependencies_selected["P(d1|!d2)"]) / (1 - final_dependencies_selected["P(d1|!d2)"]))
-
-    data_prediction1 = data_prediction1.orderBy(data_prediction1["Delta_P(d1,d2)"], ascending=False).limit(10000)
-
-    data_prediction2 = final_dependencies_selected.filter((F.col("P(d2|d1)") - F.col("P(d2|!d1)")) > 0)
-    data_prediction2 = data_prediction2 \
-        .withColumn("Delta_P(d2,d1)", (final_dependencies_selected["P(d2|d1)"] - final_dependencies_selected["P(d2|!d1)"]) / (1 - final_dependencies_selected["P(d2|!d1)"]))
-
-    data_prediction2 = data_prediction2.orderBy(data_prediction2["Delta_P(d2,d1)"], ascending=False).limit(10000)
+    final_dependencies_selected = addProbabilityFields(dependenciesSelectedFromFirstApproach, final_dependencies_selected, df1_count)
+    data_prediction1 = applyDeltaP(final_dependencies_selected)
 
     u.write_csv(data_prediction1.coalesce(1), u.spark_dir)
-    u.copy_csv(u.spark_dir, "../../../output/data_prediction1.csv")
-
-    u.write_csv(data_prediction2.coalesce(1), u.spark_dir)
-    u.copy_csv(u.spark_dir, "../../../output/data_prediction2.csv")
+    u.copy_csv(u.spark_dir, "../../../output/data_prediction.csv")
 
 
 if __name__ == "__main__":
