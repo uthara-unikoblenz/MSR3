@@ -1,44 +1,76 @@
-# About
-This repository contains the code underlying the master thesis "Applying API Categories to the Abstractions Using APIs" (2021) written by Katharina Gorjatschev in the Software Languages Team at the Computer Science Department of the University of Koblenz and Landau.
+# Note
 
-This readme was created to help the MSR 2021/22 course to understand the code structure easier. 
+This is a research question as part of the MSR course 2021/22 at UniKo, CS department, SoftLang Team
 
-# Code structure
-The code consists of Java and Python code. Java is used for data collection and parsing, Python is used for analysis and visualization (because of PySpark and Plotly). All Java code is executed from the `Application.java` file. There are four Python files. Three of them are independent of each other and all have an own main function for the execution of the code. The last file `utils.py` is just a utils file.
+# Names of team/students
 
-### 1. Collection of repositories
-Collects repositories from GitHub.
-* Where: `Application.java` (line 51)
-* Involved files: `RepositoriesPicker.java`, `Utils.java`
+- Team: Golf
+- Members:  
+   Rahul Narayandas Chhabadiya (rchhabadiya@uni-koblenz.de)  
+   Uthara Ramanandan Kottaypilaprathodi (ukottaypilap@uni-koblenz.de )
 
-### 2. Collection and analysis of the dependencies of the collected repositories
-This step is performed to decide which repositories and dependencies are worth looking into (collection performed in Java, analysis performed in Python).
-* Where: `Application.java` (line 56 and 61), `dependencies_counter.py` (line 125-130)
-* Involved files: `RepositoriesPicker.java`, `RepositoryManager.java`, `DependenciesManager.java`, `Utils.java`, `dependencies_counter.py`, `utils.py`
+# Baseline study:
 
-### 3. Selection of repositories
-Selects the repositories from the collected repositories that actually will be parsed and analysed.
-* Where: `Application.java` (line 66)
-* Involved files: `RepositoriesPicker.java`, `Utils.java`
+- ### Research Question based on the exisiting project:
 
-### 4. Parsing of repositories
-Downloads Java files, collects dependencies from POM files, collects their MCR categories and MCR tags, downloads the dependencies, parses the Java files, resolves class usages in the Java files, and allocates dependencies to the found API usages.
-* Where: `Application.java` (line 70f)
-* Involved files: `RepositoryManager.java`, `DependenciesManager.java`, `DependenciesDownloader.java`, `Parser.java`, `ClassOrInterfaceSymbolResolver.java`, `DependenciesAllocator.java`, `Utils.java`
+   Can we predict (non-) implication probabilistically by using just POM dependencies?
 
-### 5. Analysis
-Analyses repositories by selecting all API usages and summarizing them in package, class, and method abstractions. Afterwards, analyses those repositories based on two dependencies (dependency pair) by counting the API usages of the dependencies and sampling abstractions for manual analysis/classification.
-* Where: `repositories_analyzer.py` (line 222-224)
-* Involved files: `repositories_analyzer.py`, `utils.py`
+- ### Existing method:
 
-### 6. Visualization
-Characterizes abstractions of repositories and visualizes the repositories.
-* Where: `repositories_visualizer.py` (line 156-165)
-* Involved files: `repositories_visualizer.py`, `utils.py`
+   - This method is used on respositories
+   - To find dependencies that are likely candidates for mixed API usage  
+   - The dependency/pair occurence proportion is computed for   both dependencies by
+      
+      P(A, B) =  # occurrences of dependency A and B / # occurrences of dependency A
 
-# Software
-* Java 11 (Maven project)
-* Python 3.9.6 (plotly==5.1.0, pyspark==3.1.2)
+   
+- ### Approach:
+  - We propose to apply a causality function.
+  - In this approach, pom files are being used not the repositories.
+  - P(e|i) = probability of an API e given API i in a pom file.
+   
+      -Equation: 
+         Δ*Pe given i = P(e|i) - P(e)/ P(¬i^¬e)
+  
+      - where ΔPei=P(e|i)-P(e)>0
+   
 
-# Notes
-You need to create a personal access token in your GitHub account and then replace the `USERNAME_AND_TOKEN` in `RepositoriesPicker.java` with your username and token.
+        
+
+# Findings of research question
+
+- ### Process delta:
+   - The original work was done on repositories while in this research question only pom files have been used which is already part of main research question.
+   - Dependencies usage count is stored in the csv file "repositories_with_dependencies.csv" and it contains data for the table 'Table 4.4: The top dependencies (Dependency) with the number of repositories that declare them (Count)' of the original thesis.
+   - Dependency pair usage is stored in the csv file "dependencies_pairs_counted.csv" and it contains data for table 'Table 4.5: The dependency pairs' of the original thesis.
+  
+- ### Output delta:
+  - In the original work >3k repositories have been used while in our case POM files have been used. So although the results are not identical they are proportional and confirm the findings from the original work.
+  - We are trying to get result of data table 4.5 from the thesis from using only pom file where Delta of P is greater than 0.6 for both dependencies.
+  - In our output the results are different because we only used POM files instead of using repositories.
+  - Dependency pair usages were counted for both side of dependencies accordingly. In the first CSV file Delta P is counted as P of e given i, in the second CSV file Delta P is counted as P of i given e.
+  - Dependencies we found in the result are not in the main result.
+
+
+# Implementation of replication:
+
+
+- ### Hardware requirements:
+    - OS: Windows, Linux or MacOS
+    - Memory: 4 GB RAM recommended
+
+- ### Software requirements
+  - Python (we used python v3.7.0)
+  - python packages - numpy, findspark
+
+
+- ## Data:
+- ### Input data:
+    - Java project repo with Maven from Github
+      - POM files  
+      - POM file in XML format and named pom.xml  (stored in pomfiles directory)
+
+- ### Output data:
+   - The output is stored in two different CSV files data_prediction1.csv & data_prediction2.csv.  
+   - data_prediction1.csv -> Statistics about dependency pairs used in the repositories where Delta P e given i. 
+   - data_prediction2.csv -> Statistics about dependency pairs used in the repositories where Delta P i given e.
