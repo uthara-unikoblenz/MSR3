@@ -75,5 +75,5 @@ This repository contains the enhancement conducted as part of the MSR course 202
 
    - #### Output data:
             Two csv files generated as a result of applying the causality function 
-            data_prediction.csv (without the use of occurrence proportion)
-            data_prediction_without_proportion_filtering (with the use of occurrence proportion)
+            data_prediction.csv (with the use of occurrence proportion)
+            data_prediction_without_proportion_filtering (without the use of occurrence proportion)
