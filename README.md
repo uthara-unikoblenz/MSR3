@@ -1,44 +1,79 @@
-# About
-This repository contains the code underlying the master thesis "Applying API Categories to the Abstractions Using APIs" (2021) written by Katharina Gorjatschev in the Software Languages Team at the Computer Science Department of the University of Koblenz and Landau.
+# Note
 
-This readme was created to help the MSR 2021/22 course to understand the code structure easier. 
+This repository contains the enhancement conducted as part of the MSR course 2021/22 at UniKo, CS department, SoftLang Team to the code underlying the master thesis "Applying API Categories to the Abstractions Using APIs" (2021) written by Katharina Gorjatschev
 
-# Code structure
-The code consists of Java and Python code. Java is used for data collection and parsing, Python is used for analysis and visualization (because of PySpark and Plotly). All Java code is executed from the `Application.java` file. There are four Python files. Three of them are independent of each other and all have an own main function for the execution of the code. The last file `utils.py` is just a utils file.
+# Names of team/students
 
-### 1. Collection of repositories
-Collects repositories from GitHub.
-* Where: `Application.java` (line 51)
-* Involved files: `RepositoriesPicker.java`, `Utils.java`
+- Team: Golf
+- Members:  
+   Rahul Narayandas Chhabadiya (rchhabadiya@uni-koblenz.de)  
+   Uthara Ramanandan Kottaypilaprathodi (ukottaypilap@uni-koblenz.de )
 
-### 2. Collection and analysis of the dependencies of the collected repositories
-This step is performed to decide which repositories and dependencies are worth looking into (collection performed in Java, analysis performed in Python).
-* Where: `Application.java` (line 56 and 61), `dependencies_counter.py` (line 125-130)
-* Involved files: `RepositoriesPicker.java`, `RepositoryManager.java`, `DependenciesManager.java`, `Utils.java`, `dependencies_counter.py`, `utils.py`
+# Baseline study:
 
-### 3. Selection of repositories
-Selects the repositories from the collected repositories that actually will be parsed and analysed.
-* Where: `Application.java` (line 66)
-* Involved files: `RepositoriesPicker.java`, `Utils.java`
+- ### Aspect of the enhancement project:
 
-### 4. Parsing of repositories
-Downloads Java files, collects dependencies from POM files, collects their MCR categories and MCR tags, downloads the dependencies, parses the Java files, resolves class usages in the Java files, and allocates dependencies to the found API usages.
-* Where: `Application.java` (line 70f)
-* Involved files: `RepositoryManager.java`, `DependenciesManager.java`, `DependenciesDownloader.java`, `Parser.java`, `ClassOrInterfaceSymbolResolver.java`, `DependenciesAllocator.java`, `Utils.java`
+   Research Question: Can we predict (non-) implication probabilistically by using just POM dependencies?
+   
+      -Is there a way to derive POM(A => B)
+      -How can the effect of popular APIs (eg: JUnit) be mitigated 
+ 
+# Findings of the enhancement
 
-### 5. Analysis
-Analyses repositories by selecting all API usages and summarizing them in package, class, and method abstractions. Afterwards, analyses those repositories based on two dependencies (dependency pair) by counting the API usages of the dependencies and sampling abstractions for manual analysis/classification.
-* Where: `repositories_analyzer.py` (line 222-224)
-* Involved files: `repositories_analyzer.py`, `utils.py`
+- ### Process delta:
+   - Only analyses POM files to derive possible mixed API usage. Does not parse repositories.   
+   - Applies two methods to arrive at possible mixed API usage   
+      1. **Applying causality function**: a probability based approach to derive “imply’ relationships among APIs by only analysing POM files 
+       
+          P(e|i) = probability of an API e given API i in a pom file. 
+         
+         ![img](https://latex.codecogs.com/svg.latex?%5CDelta%20P%5Ee_i%3D%5Cfrac%7BP%28e%7Ci%29-P%28e%7C%5Crightharpoondown%20i%29%7D%7B1-P%28e%7C%5Crightharpoondown%20i%29%7D)     
+         
+         where ![img](https://latex.codecogs.com/svg.latex?P%28e%7Ci%29-P%28e%7C%5Crightharpoondown%20i%29%3E%200)         
+      2. **Applying causality function along with occurrence proportion**
+      
+          The dependency/pair occurence proportion is computed for both dependencies by
+          
+          P(A, B) =  ![img](https://latex.codecogs.com/svg.latex?%5Cfrac%7Boccurrences%5Chspace%7B.3em%7Dof%5Chspace%7B.3em%7D%20dependency%5Chspace%7B.3em%7D%20A%5Chspace%7B.3em%7D%20and%5Chspace%7B.3em%7D%20B%7D%7Boccurrences%5Chspace%7B.3em%7D%20of%5Chspace%7B.3em%7D%20dependency%5Chspace%7B.3em%7D%20A%7D)
+      3. **Involved files**
+      
+          dependencies_counter.py
+    
 
-### 6. Visualization
-Characterizes abstractions of repositories and visualizes the repositories.
-* Where: `repositories_visualizer.py` (line 156-165)
-* Involved files: `repositories_visualizer.py`, `utils.py`
+      
+  
+- ### Output delta:
+  - Comparing the results of this enhancement with Delta_P > 0.6  with the results from the original thesis namely table 4.7 and 4.14 we find
+  - Most of the API pairs ranked high with occurrence proportion also rank high with Delta_P
+  - Various API pairs ranked high in Delta_P does not show any actual mixed usage
+  - API’s chosen for final analysis in [Gorjateschev] after applying manual verification naturally doesn’t score high in Delta_P values as only POM files were used
 
-# Software
-* Java 11 (Maven project)
-* Python 3.9.6 (plotly==5.1.0, pyspark==3.1.2)
 
-# Notes
-You need to create a personal access token in your GitHub account and then replace the `USERNAME_AND_TOKEN` in `RepositoriesPicker.java` with your username and token.
+
+# Implementation of replication:
+
+
+- ### Hardware requirements:
+    - OS: Windows, Linux or MacOS
+    - Memory: 4 GB RAM recommended
+
+- ### Software requirements
+  - Python (we used python v3.7.0)
+  - python packages - numpy, findspark
+
+
+- ### Data:
+
+  - #### Input data:  
+          POM file in XML format and named pom.xml collected from 
+          Java projects with Maven 
+          Only considering Repositories that have
+          At least 100 stars,
+          At least 100 commits
+          At least two contributors
+          At least one source directory src/main/java
+
+   - #### Output data:
+            Two csv files generated as a result of applying the causality function 
+            data_prediction.csv (without the use of occurrence proportion)
+            data_prediction_without_proportion_filtering (with the use of occurrence proportion)
