@@ -50,7 +50,7 @@ This repository contains the enhancement conducted as part of the MSR course 202
 
 
 
-# Implementation of replication
+# Implementation of enhancement
 
 
 - ### Hardware requirements:
