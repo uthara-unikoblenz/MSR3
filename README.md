@@ -9,7 +9,7 @@ This repository contains the enhancement conducted as part of the MSR course 202
    Rahul Narayandas Chhabadiya (rchhabadiya@uni-koblenz.de)  
    Uthara Ramanandan Kottaypilaprathodi (ukottaypilap@uni-koblenz.de )
 
-# Baseline study:
+# Baseline study
 
 - ### Aspect of the enhancement project:
 
@@ -50,7 +50,7 @@ This repository contains the enhancement conducted as part of the MSR course 202
 
 
 
-# Implementation of replication:
+# Implementation of replication
 
 
 - ### Hardware requirements:
