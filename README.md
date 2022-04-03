@@ -23,19 +23,19 @@ This repository contains the enhancement conducted as part of the MSR course 202
 - ### Process delta:
    - Only analyses POM files to derive possible mixed API usage. Does not parse repositories.   
    - Applies two methods to arrive at possible mixed API usage   
-      1. **Applying causality function**: a probability based approach to derive “imply’ relationships among APIs by only analysing POM files 
+      **1. Applying causality function**: a probability based approach to derive “imply’ relationships among APIs by only analysing POM files 
        
           P(e|i) = probability of an API e given API i in a pom file. 
          
          ![img](https://latex.codecogs.com/svg.latex?%5CDelta%20P%5Ee_i%3D%5Cfrac%7BP%28e%7Ci%29-P%28e%7C%5Crightharpoondown%20i%29%7D%7B1-P%28e%7C%5Crightharpoondown%20i%29%7D)     
          
          where ![img](https://latex.codecogs.com/svg.latex?P%28e%7Ci%29-P%28e%7C%5Crightharpoondown%20i%29%3E%200)         
-      2. **Applying causality function along with occurrence proportion**
+      **2. Applying causality function along with occurrence proportion**
       
           The dependency/pair occurence proportion is computed for both dependencies by
           
           P(A, B) =  ![img](https://latex.codecogs.com/svg.latex?%5Cfrac%7Boccurrences%5Chspace%7B.3em%7Dof%5Chspace%7B.3em%7D%20dependency%5Chspace%7B.3em%7D%20A%5Chspace%7B.3em%7D%20and%5Chspace%7B.3em%7D%20B%7D%7Boccurrences%5Chspace%7B.3em%7D%20of%5Chspace%7B.3em%7D%20dependency%5Chspace%7B.3em%7D%20A%7D)
-      3. **Involved files**
+      **3. Involved files**
       
           dependencies_counter.py
     
